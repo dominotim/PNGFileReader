@@ -89,7 +89,6 @@ struct DecodedImageInfo
 struct DataChunk
 {
     std::vector<std::vector<byte> > decodedScanlines;
-    std::vector<byte> rawData;
 };
 
 } // data

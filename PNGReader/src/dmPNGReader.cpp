@@ -15,20 +15,26 @@ bool dm::PNGReader::Parse()
 {
     if (!CheckHeader())
         return false;
+
     data::HeaderChunk header;
-    data::DataChunk data;
-    data::PaletChunk palet;
-    Decompressor decod;
-    for (data::ChunkInfo info = NextChunk(); info.type != data::IEND; info = NextChunk())
+    data::DataChunk   data;
+    data::PaletChunk  palet;
+    Decompressor      inflator;
+    for(data::ChunkInfo info = NextChunk();
+        info.type != data::IEND;
+        info = NextChunk())
     {
-        if (!chunkHelper::IsValidChunk(info))
+        if(!chunkHelper::IsValidChunk(info))
             throw "Error";
         switch (info.type)
         {
-        case data::IHDR: chunkHelper::DecodeHeaderChunk(info.data, header); break;
-        case data::IDAT: chunkHelper::DecodeDataChunk(info.data, header, data, decod); break;
-        case data::PLTE: chunkHelper::DecodePaletChunk(info.data, palet); break;
-        default: break;
+            case data::IHDR:
+                chunkHelper::DecodeHeaderChunk(info.data, header); break;
+            case data::IDAT:
+                chunkHelper::DecodeDataChunk(info.data, header, data, inflator); break;
+            case data::PLTE:
+                chunkHelper::DecodePaletChunk(info.data, palet); break;
+            default: break;
         }
     }
     /*REMOVE LATER*/
@@ -64,7 +70,9 @@ bool dm::PNGReader::CheckHeader()
     if (m_bytes.size() < HEADER_LENGTH)
         return false;
     m_position += HEADER_LENGTH;
-    return std::equal(m_bytes.begin(), m_bytes.begin() + HEADER_LENGTH, HEADER_SYMBOLS.begin());
+    return std::equal(m_bytes.begin(),
+                      m_bytes.begin() + HEADER_LENGTH,
+                      HEADER_SYMBOLS.begin());
 }
 
 void dm::PNGReader::Init(std::ifstream& file, std::ifstream::pos_type pos)

@@ -7,7 +7,6 @@ namespace dm
 {
 namespace chunkHelper
 {
-byte GetByteInPixel(const byte colorType, const byte bitDepth);
 uint32 GetInt32ValueAndIncIdx(const bytes& data, size_t& idx);
 void DecodeHeaderChunk(const bytes& data, data::HeaderChunk& chunk);
 void DecodeDataChunk(const bytes& data, const data::HeaderChunk& header, data::DataChunk& chunk, Decompressor& decoder);

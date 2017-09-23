@@ -11,78 +11,73 @@ namespace dm
 class Decompressor
 {
 public:
-
-    Decompressor() : m_initialized(false), m_readedSize(0){}
+    Decompressor() : m_initialized(false), m_readBefore(0){}
     typedef unsigned long ulon;
-    template <typename byte>
-    std::pair<std::vector<byte>, bool> Decompress(const std::vector<byte>& bytes)
+    typedef std::uint8_t  byte;
+
+    std::vector<byte> Decompress(const std::vector<byte>& bytes)
     {
-        ulon sizeDataCompressed = bytes.size();
-        ulon sizeDataUncompressed = (sizeDataCompressed * 100);
-        byte * dataUncompressed = (byte*)malloc(sizeDataUncompressed);
-        std::vector<char> data(bytes.begin(), bytes.end());
-        Bytef* dataCompressed = (Bytef*)(&data[0]);
+        const ulon sizeDataCompressed = bytes.size();
+        const Bytef* dataCompressed   = (Bytef*)(&bytes[0]);
+        ulon sizeDataUncompressed     = (sizeDataCompressed * 100);
+        byte * dataUncompressed       = (byte*)malloc(sizeDataUncompressed);
+
         bool isLast = false;
-        int z_result = Inflate(dataUncompressed,
+        const int code = Inflate(dataUncompressed,
             &sizeDataUncompressed, dataCompressed, sizeDataCompressed, isLast);
-        
-        switch (z_result)
+        switch (code)
         {
-        case Z_OK:
-            std::cout << "***** SUCCESS! *****\n";
-            break;
-
-        case Z_MEM_ERROR:
-            std::cout << "out of memory\n";
-            break;
-
-        case Z_BUF_ERROR:
-            std::cout << "output buffer wasn't large enough!\n";
-            break;
+            case Z_MEM_ERROR: throw "e"; break;
+            case Z_BUF_ERROR: throw "e"; break;
         }
-        const size_t currentIdx = sizeDataUncompressed - m_readedSize;
-        m_readedSize = sizeDataUncompressed;
-        std::vector<byte> res(dataUncompressed, dataUncompressed + currentIdx);
+
+        const size_t size = sizeDataUncompressed - m_readBefore;
+        m_readBefore = sizeDataUncompressed;
+        m_rawData.insert(m_rawData.end(), dataUncompressed, dataUncompressed + size);
         free(dataUncompressed);
-        return std::make_pair(res, isLast);
+        const std::vector<byte> res = isLast ? m_rawData : std::vector<byte>();
+        if (isLast) { m_initialized = false; m_readBefore = 0; }
+        return res;
     }
+
 private:
     int Inflate(
-        Bytef *dest,
-        uLongf *destLen,
+        Bytef *inflated,
+        uLongf *inflatedBufSize,
         const Bytef *source,
-        uLong sourceLen,
-        bool& isEndBlock)
+        const uLong sourceBufSize,
+        bool& isFinalBlock)
     {
-        m_stream.next_in = (Bytef*)source;
-        m_stream.avail_in = (uInt)sourceLen;
-        m_stream.next_out = dest;
-        m_stream.avail_out = (uInt)*destLen;
-            m_stream.zalloc = (alloc_func)0;
-            m_stream.zfree = (free_func)0;
-        int err = Z_OK;
+        m_stream.next_in   = (Bytef*)source;
+        m_stream.avail_in  = (uInt)sourceBufSize;
+        m_stream.next_out  = inflated;
+        m_stream.avail_out = (uInt)*inflatedBufSize;
+        m_stream.zalloc    = (alloc_func)0;
+        m_stream.zfree     = (free_func)0;
+
+        int resultCode = Z_OK;
         if (!m_initialized)
         {
-
-            err = inflateInit(&m_stream);
+            resultCode = inflateInit(&m_stream);
             m_initialized = true;
         }
-        if (err != Z_OK) return err;
+        if (resultCode != Z_OK) return resultCode;
+        resultCode = inflate(&m_stream, Z_SYNC_FLUSH);
+        *inflatedBufSize = m_stream.total_out;
+        isFinalBlock = resultCode == Z_STREAM_END;
 
-        err = inflate(&m_stream, Z_SYNC_FLUSH);
-        *destLen = m_stream.total_out;
-        isEndBlock = err == Z_STREAM_END;
-        if (err != Z_STREAM_END) {
-            if (err == Z_NEED_DICT || (err == Z_BUF_ERROR && m_stream.avail_in == 0))
-                return Z_DATA_ERROR;
-            return err;
-        }
-        err = inflateEnd(&m_stream);
-        return err;
+        if (!isFinalBlock)
+            return (resultCode == Z_NEED_DICT
+                || (resultCode == Z_BUF_ERROR && m_stream.avail_in == 0))
+                ? Z_DATA_ERROR : resultCode;
+        return inflateEnd(&m_stream);
     }
-    z_stream m_stream;
-    size_t m_readedSize;
-    bool m_initialized;
+
+private:
+    z_stream          m_stream;
+    size_t            m_readBefore;
+    std::vector<byte> m_rawData;
+    bool              m_initialized;
 };
 
 }  // namespace dm

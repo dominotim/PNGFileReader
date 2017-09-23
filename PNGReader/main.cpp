@@ -13,7 +13,7 @@
 int main()
 {
     dm::PNGReader reader;
-    reader.Read("D:/tim/4.png");
+    reader.Read("D:/tim/6.png");
     return 0;
 }
 
