@@ -103,10 +103,7 @@ void chunkHelper::DecodePaletChunk(const bytes& data, data::PaletChunk& chunk)
         throw "Error";
     chunk.colorsByIdx.clear();
     for(size_t i = 0; i < data.size(); i += 3)
-    {
-        chunk.colorsByIdx.push_back(
-            data::Pixel{ data[i], data[i + 1], data[i + 2], 255 });
-    }
+        chunk.colorsByIdx.push_back(data::Pixel{ data[i], data[i + 1], data[i + 2], 255 });
     chunk.initialized = true;
 }
 
@@ -120,9 +117,8 @@ bool chunkHelper::IsValidChunk(data::ChunkInfo& chunk)
     r = data::crcTable[(r ^ converter.bytes.b2) & 0xff] ^ (r >> 8);
     r = data::crcTable[(r ^ converter.bytes.b1) & 0xff] ^ (r >> 8);
     for (size_t i = 0; i < chunk.data.size(); ++i)
-    {
         r = data::crcTable[(r ^ chunk.data[i]) & 0xff] ^ (r >> 8);
-    }
+ 
     return ((r ^ 0xffffffffu) == chunk.crc);
 }
 
