@@ -20,7 +20,7 @@ union
 std::vector<bytes> GetScanlines(const bytes& data, const data::HeaderChunk& header)
 {
     std::vector<bytes> res(header.height);
-    const byte BYTE_PER_PIXEL_COUNT = chunkHelper::GetByteInPixel(header.colorType);
+    const byte BYTE_PER_PIXEL_COUNT = chunkHelper::GetByteInPixel(header.colorType, header.bitDepth);
     const size_t lineLen = header.width * BYTE_PER_PIXEL_COUNT + 1;
     for (size_t i = 0, idx = 0; i < header.height; ++i)
     {
@@ -42,17 +42,30 @@ std::vector<bytes> GetScanlines(const bytes& data, const data::HeaderChunk& head
 }
 } // namespace
 
-byte chunkHelper::GetByteInPixel(const byte colorType, const byte factor)
+byte chunkHelper::GetByteInPixel(const byte colorType, const byte bitDepth)
 {
     switch (colorType)
     {
-    case 0:return 1 * factor;
-    case 2:return 3 * factor;
-    case 3:return 1 * factor;
-    case 4:return 2 * factor;
-    case 6:return 4 * factor;
+    case 0:return 1 * (byte)std::ceil(bitDepth * 1.0 / 8.);
+    case 2:return 3 * (byte)std::ceil(bitDepth * 1.0 / 8.);
+    case 3:return 1 * (byte)std::ceil(bitDepth * 1.0 / 8.);
+    case 4:return 2 * (byte)std::ceil(bitDepth * 1.0 / 8.);
+    case 6:return 4 * (byte)std::ceil(bitDepth * 1.0 / 8.);
     default:
         throw "e";
+    }
+}
+
+data::ImageType GetImageType(byte bitDepth, byte colorType)
+{
+    switch (colorType)
+    {
+    case 0: return data::GRAY_SCALE;
+    case 2: return (bitDepth == 8 || bitDepth == 16) ? data::RGB : data::ERROR_TYPE;
+    case 3: return (bitDepth <= 8) ? data::PALLET : data::ERROR_TYPE;
+    case 4: return (bitDepth == 8 || bitDepth == 16) ? data::GRAY_SCALE_ALFA : data::ERROR_TYPE;
+    case 6: return (bitDepth == 8 || bitDepth == 16) ? data::RGBA : data::ERROR_TYPE;
+    default:break;
     }
 }
 
@@ -73,11 +86,27 @@ void chunkHelper::DecodeHeaderChunk(const bytes& data, data::HeaderChunk& chunk)
     chunk.filterMethod = data[idx++];
     chunk.interlaceMethod = data[idx++];
 }
+template<typename T>
+void push(std::vector<T>& container, std::vector<T>& toAdd)
+{
+    if (container.empty())
+    {
+        container = toAdd;
+        return;
+    }
+    container.insert(container.end(), toAdd.begin(), toAdd.end());
+}
 
 void chunkHelper::DecodeDataChunk(const bytes& data,
-    const data::HeaderChunk& header, data::DataChunk& chunk)
+    const data::HeaderChunk& header, data::DataChunk& chunk, Decompressor& decoder)
 {
-    chunk.decodedScanlines = GetScanlines(dm::Decompress(data), header);
+    std::pair<std::vector<byte>, bool> uncompressed = decoder.Decompress(data);
+    push(chunk.rawData, uncompressed.first);
+    if (uncompressed.second)
+    {
+        push(chunk.decodedScanlines, GetScanlines(chunk.rawData, header));
+        chunk.rawData.clear();
+    }
 }
 
 void chunkHelper::DecodePaletChunk(const bytes& data, data::PaletChunk& chunk)
@@ -108,37 +137,52 @@ bool chunkHelper::IsValidChunk(data::ChunkInfo& chunk)
     return ((r ^ 0xffffffffu) == chunk.crc);
 }
 
-data::DecodedImageInfo chunkHelper::CreateFullImageInfo(const data::DataChunk& data,
-    const data::HeaderChunk& header, const data::PaletChunk& palet)
+data::DecodedImageInfo chunkHelper::CreateFullImageInfo(
+    const data::DataChunk& data,
+    const data::HeaderChunk& header,
+    const data::PaletChunk& palet)
 {
     data::DecodedImageInfo res;
+    res.type = GetImageType(header.bitDepth, header.colorType);
     res.pixels.resize(header.height, std::vector<data::Pixel>(header.width));
-    byte inc = dm::chunkHelper::GetByteInPixel(header.colorType);
+    byte inc = dm::chunkHelper::GetByteInPixel(header.colorType, header.bitDepth);
     for (size_t i = 0; i < data.decodedScanlines.size(); ++i)
     {
         for (size_t j = 0, imIdx = 0; j < data.decodedScanlines[i].size(); j += inc, ++imIdx)
         {
-            if (inc == 1)
+            switch (res.type)
             {
-                if (palet.initialized)
-                {
-                    res.pixels[i][imIdx] = palet.colorsByIdx[data.decodedScanlines[i][j]];
-                }
-            }
-            else if (inc == 2)
+            case data::GRAY_SCALE:
             {
-
-            }
-            else if (inc == 3)
+                res.pixels[i][imIdx] = { data.decodedScanlines[i][j], data.decodedScanlines[i][j], data.decodedScanlines[i][j], 255 };
+            }break;
+            case data::RGB:
             {
-
-            }
-            else if (inc == 4)
+                res.pixels[i][imIdx].red = data.decodedScanlines[i][j];
+                res.pixels[i][imIdx].green = data.decodedScanlines[i][j + 1];
+                res.pixels[i][imIdx].blue = data.decodedScanlines[i][j + 2];
+                res.pixels[i][imIdx].alfa = 255;
+            } break;
+            case data::PALLET:
+            {
+                if (!palet.initialized)
+                    throw "e";
+                res.pixels[i][imIdx] = palet.colorsByIdx[data.decodedScanlines[i][j]];
+            } break;
+            case data::GRAY_SCALE_ALFA:
+            {
+                res.pixels[i][imIdx].red = data.decodedScanlines[i][j];
+                res.pixels[i][imIdx].green = data.decodedScanlines[i][j];
+                res.pixels[i][imIdx].blue = data.decodedScanlines[i][j];
+                res.pixels[i][imIdx].alfa = data.decodedScanlines[i][j + 1];
+            }break;
+            case data::RGBA:
             {
                 res.pixels[i][imIdx].red = data.decodedScanlines[i][j];
                 res.pixels[i][imIdx].green = data.decodedScanlines[i][j + 1];
                 res.pixels[i][imIdx].blue = data.decodedScanlines[i][j + 2];
                 res.pixels[i][imIdx].alfa = data.decodedScanlines[i][j + 3];
+            } break;
             }
         }
     }

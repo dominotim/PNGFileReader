@@ -2,6 +2,7 @@
 #include "dmPNGReader.hpp"
 #include "dmImage.hpp"
 #include "dmPNGChunkHelper.hpp"
+#include "dmZlibConverter.hpp"
 
 namespace dm
 {
@@ -17,6 +18,7 @@ bool dm::PNGReader::Parse()
     data::HeaderChunk header;
     data::DataChunk data;
     data::PaletChunk palet;
+    Decompressor decod;
     for (data::ChunkInfo info = NextChunk(); info.type != data::IEND; info = NextChunk())
     {
         if (!chunkHelper::IsValidChunk(info))
@@ -24,7 +26,7 @@ bool dm::PNGReader::Parse()
         switch (info.type)
         {
         case data::IHDR: chunkHelper::DecodeHeaderChunk(info.data, header); break;
-        case data::IDAT: chunkHelper::DecodeDataChunk(info.data, header, data); break;
+        case data::IDAT: chunkHelper::DecodeDataChunk(info.data, header, data, decod); break;
         case data::PLTE: chunkHelper::DecodePaletChunk(info.data, palet); break;
         default: break;
         }

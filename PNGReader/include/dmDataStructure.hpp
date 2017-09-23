@@ -30,6 +30,16 @@ enum ChunkType : uint32
     UNDEFINED
 };
 
+enum ImageType : uint32
+{
+    GRAY_SCALE,
+    RGB,
+    PALLET,
+    GRAY_SCALE_ALFA,
+    RGBA,
+    ERROR_TYPE
+};
+
 struct ChunkInfo
 {
     std::vector<byte> data;
@@ -73,11 +83,13 @@ struct PaletChunk
 struct DecodedImageInfo
 {
     std::vector<std::vector<Pixel> > pixels;
+    ImageType type;
 };
 
 struct DataChunk
 {
     std::vector<std::vector<byte> > decodedScanlines;
+    std::vector<byte> rawData;
 };
 
 } // data

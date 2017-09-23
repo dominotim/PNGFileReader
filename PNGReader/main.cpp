@@ -6,7 +6,6 @@
 #include <iostream>
 #include <tuple>
 #include <windows.h>
-#include "dmZlibConverter.hpp"
 #include "dmFilters.hpp"
 #include "tgaimage.hpp"
 #include "dmPNGReader.hpp"
@@ -14,7 +13,7 @@
 int main()
 {
     dm::PNGReader reader;
-    reader.Read("D:/tim/3.png");
+    reader.Read("D:/tim/4.png");
     return 0;
 }
 
