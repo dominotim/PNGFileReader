@@ -10,6 +10,7 @@
 namespace dm
 {
 typedef std::uint32_t       uint32;
+typedef std::uint16_t       uint16;
 typedef std::uint8_t        byte;
 typedef std::vector<byte>   bytes;
 
@@ -27,6 +28,9 @@ enum ChunkType : uint32
     PLTE = CODE("PLTE"),
     IDAT = CODE("IDAT"),
     IEND = CODE("IEND"),
+
+    /*Ancillary chunks*/
+    tRNS = CODE("tRNS"),
     UNDEFINED
 };
 
@@ -50,10 +54,10 @@ struct ChunkInfo
 
 struct Pixel
 {
-    byte red;
-    byte green;
-    byte blue;
-    byte alfa;
+    uint16 red;
+    uint16 green;
+    uint16 blue;
+    uint16 alfa;
 };
 const size_t HEADER_LENGTH = 8;
 const std::vector<byte> HEADER_SYMBOLS = { 137, 80, 78, 71, 13, 10, 26, 10 };
@@ -84,11 +88,20 @@ struct DecodedImageInfo
 {
     std::vector<std::vector<Pixel> > pixels;
     ImageType type;
+    byte bitDepth;
 };
 
 struct DataChunk
 {
-    std::vector<std::vector<byte> > decodedScanlines;
+    std::vector<std::vector<uint16> > decodedScanlines;
+};
+
+struct TransParencyChunk
+{
+    std::vector<byte> paleteTransparents;
+    uint16 transparent;
+    uint16 transparentRGB[3];
+    bool initialized = false;
 };
 
 } // data

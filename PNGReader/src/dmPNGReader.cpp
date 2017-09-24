@@ -16,9 +16,10 @@ bool dm::PNGReader::Parse()
     if (!CheckHeader())
         return false;
 
-    data::HeaderChunk header;
-    data::DataChunk   data;
-    data::PaletChunk  palet;
+    data::HeaderChunk       header;
+    data::DataChunk         data;
+    data::PaletChunk        palet;
+    data::TransParencyChunk transp;
     Decompressor      inflator;
     for(data::ChunkInfo info = NextChunk();
         info.type != data::IEND;
@@ -34,12 +35,14 @@ bool dm::PNGReader::Parse()
                 chunkHelper::DecodeDataChunk(info.data, header, data, inflator); break;
             case data::PLTE:
                 chunkHelper::DecodePaletChunk(info.data, palet); break;
+            case data::tRNS:
+                chunkHelper::DecodeTransparencyChunk(info.data, header, transp); break;
             default: break;
         }
     }
     /*REMOVE LATER*/
-    data::DecodedImageInfo inf = chunkHelper::CreateFullImageInfo(data, header, palet);
-    dmImage im(inf.pixels);
+    data::DecodedImageInfo inf = chunkHelper::CreateFullImageInfo(data, header, palet, transp);
+    dmImage im(inf.pixels, inf.bitDepth == 16);
     DrawImage(im);
     /*REMOVE LATER*/
     return true;

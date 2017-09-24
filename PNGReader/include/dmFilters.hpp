@@ -9,18 +9,18 @@ namespace dm
 {
 namespace
 {
-    int PaethPredictor(const int a, const int b, const int c)
-    {
-        const int p = a + b - c;
-        const int pa = std::abs(p - a);
-        const int pb = std::abs(p - b);
-        const int pc = std::abs(p - c);
-        if (pa <= pb && pa <= pc)
-            return a;
-        else if (pb <= pc)
-            return b;
-        else return c;
-    }
+int PaethPredictor(const int a, const int b, const int c)
+{
+    const int p = a + b - c;
+    const int pa = std::abs(p - a);
+    const int pb = std::abs(p - b);
+    const int pc = std::abs(p - c);
+    if (pa <= pb && pa <= pc)
+        return a;
+    else if (pb <= pc)
+        return b;
+    else return c;
+}
 }
 namespace Unfilter
 {
@@ -72,6 +72,6 @@ void Paeth(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const
                 ((slIdx == 0 || i <= shift) ? 0 : scanlines[slIdx-1][i - shift]))) % 256;
     }
 }
-}
-}
+} // Unfilter
+} // dm
 #endif _DM_FILTERS_
