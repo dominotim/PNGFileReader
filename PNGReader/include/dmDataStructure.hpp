@@ -31,6 +31,11 @@ enum ChunkType : uint32
 
     /*Ancillary chunks*/
     tRNS = CODE("tRNS"),
+    gAMA = CODE("gAMA"),
+    cHRM = CODE("cHRM"),
+    sRGB = CODE("sRGB"),
+   //need iCCP chunk but i didn't want to imlement it
+    
     UNDEFINED
 };
 
@@ -84,13 +89,6 @@ struct PaletChunk
     bool initialized = false;
 };
 
-struct DecodedImageInfo
-{
-    std::vector<std::vector<Pixel> > pixels;
-    ImageType type;
-    byte bitDepth;
-};
-
 struct DataChunk
 {
     std::vector<std::vector<uint16> > decodedScanlines;
@@ -104,6 +102,40 @@ struct TransParencyChunk
     bool initialized = false;
 };
 
+struct GammaChunk
+{
+    uint32 gamma = 100000;
+    bool initialized = false;
+};
+
+struct PrimaryChromaticitiesChunk
+{
+    uint32 whiteX = 100000;
+    uint32 whiteY = 100000;
+    uint32 redX = 100000;
+    uint32 redY = 100000;
+    uint32 greenX = 100000;
+    uint32 greenY = 100000;
+    uint32 blueX = 100000;
+    uint32 blueY = 100000;
+    bool initialized = false;
+};
+
+struct StandartRGBChunk
+{
+    byte  renderingIntent;
+    bool initialized = false;
+};
+
+struct DecodedImageInfo
+{
+    std::vector<std::vector<Pixel> > pixels;
+    ImageType type;
+    byte bitDepth;
+    /*SPECIAL INFO*/
+    double gamma = 1;
+    PrimaryChromaticitiesChunk primaryChromaticValues;
+};
 } // data
 } // dm
 

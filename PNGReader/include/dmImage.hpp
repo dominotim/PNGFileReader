@@ -17,7 +17,8 @@ public:
         :m_height(pixels.size()),
         m_width(pixels[0].size()),
         m_pixels(pixels),
-        m_is16BitPepth(is16Bit)
+        m_is16BitPepth(is16Bit),
+        m_gamma(1)
     {
     }
     const PixelsArray& GetPixels() const
@@ -39,6 +40,16 @@ public:
         return m_is16BitPepth;
     }
 
+    void SetGamma(const double gamma)
+    {
+        m_gamma = gamma;
+    }
+
+    const double GetGamma() const
+    {
+        return m_gamma;
+    }
+
     data::Pixel operator()(size_t i, size_t j) const
     {
         return m_pixels[i][j];
@@ -49,6 +60,7 @@ private:
     size_t m_height;
     size_t m_width;
     bool m_is16BitPepth;
+    double m_gamma;
 };
 
 void DrawImage(const dmImage& src)

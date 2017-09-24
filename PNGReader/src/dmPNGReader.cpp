@@ -16,10 +16,13 @@ bool dm::PNGReader::Parse()
     if (!CheckHeader())
         return false;
 
-    data::HeaderChunk       header;
-    data::DataChunk         data;
-    data::PaletChunk        palet;
-    data::TransParencyChunk transp;
+    data::HeaderChunk                header;
+    data::DataChunk                  data;
+    data::PaletChunk                 palet;
+    data::TransParencyChunk          transp;
+    data::GammaChunk                 gamma;
+    data::PrimaryChromaticitiesChunk chrom;
+    data::StandartRGBChunk           srgb;
     Decompressor      inflator;
     for(data::ChunkInfo info = NextChunk();
         info.type != data::IEND;
@@ -30,19 +33,28 @@ bool dm::PNGReader::Parse()
         switch (info.type)
         {
             case data::IHDR:
-                chunkHelper::DecodeHeaderChunk(info.data, header); break;
+                chunkHelper::DecodeHeaderChunk(info.data, header); std::cout << "IHDR" << std::endl;  break;
             case data::IDAT:
-                chunkHelper::DecodeDataChunk(info.data, header, data, inflator); break;
+                chunkHelper::DecodeDataChunk(info.data, header, data, inflator); std::cout << "IDAT" << std::endl; break;
             case data::PLTE:
-                chunkHelper::DecodePaletChunk(info.data, palet); break;
+                chunkHelper::DecodePaletChunk(info.data, palet);  std::cout << "PLTE" << std::endl; break;
             case data::tRNS:
-                chunkHelper::DecodeTransparencyChunk(info.data, header, transp); break;
+                chunkHelper::DecodeTransparencyChunk(info.data, header, transp); std::cout << "tRNS" << std::endl; break;
+            case data::gAMA:
+                chunkHelper::DecodeGammaChunk(info.data, gamma); std::cout << "gAMA" << std::endl; break;
+            case data::cHRM:
+                chunkHelper::DecodeChromatChunk(info.data, chrom); std::cout << "cHRM" << std::endl; break;
+            case data::sRGB:
+                chunkHelper::DecodeStandartRGBChunk(info.data, srgb); std::cout << "sRGB" << std::endl; break;
             default: break;
         }
     }
     /*REMOVE LATER*/
-    data::DecodedImageInfo inf = chunkHelper::CreateFullImageInfo(data, header, palet, transp);
+    data::DecodedImageInfo inf = chunkHelper::CreateFullImageInfo(data, header, palet, transp, gamma);
+    inf.primaryChromaticValues = chrom;
+
     dmImage im(inf.pixels, inf.bitDepth == 16);
+    im.SetGamma(inf.gamma);
     DrawImage(im);
     /*REMOVE LATER*/
     return true;

@@ -163,6 +163,33 @@ void chunkHelper::DecodeTransparencyChunk(
     chunk.initialized = true;
 }
 
+void chunkHelper::DecodeGammaChunk(const bytes& data, data::GammaChunk& chunk)
+{
+    size_t idx = 0;
+    chunk.gamma = GetInt32ValueAndIncIdx(data, idx);
+    chunk.initialized = true;
+}
+
+void chunkHelper::DecodeChromatChunk(const bytes& data, data::PrimaryChromaticitiesChunk& chunk)
+{
+    chunk.initialized = true;
+    size_t idx = 0;
+    chunk.whiteX = GetInt32ValueAndIncIdx(data, idx);
+    chunk.whiteY = GetInt32ValueAndIncIdx(data, idx);
+    chunk.redX = GetInt32ValueAndIncIdx(data, idx);
+    chunk.redY = GetInt32ValueAndIncIdx(data, idx);
+    chunk.greenX = GetInt32ValueAndIncIdx(data, idx);
+    chunk.greenY = GetInt32ValueAndIncIdx(data, idx);
+    chunk.blueX = GetInt32ValueAndIncIdx(data, idx);
+    chunk.blueY = GetInt32ValueAndIncIdx(data, idx);
+}
+
+void chunkHelper::DecodeStandartRGBChunk(const bytes& data, data::StandartRGBChunk& chunk)
+{
+    chunk.initialized = true;
+    chunk.renderingIntent = data[0];
+}
+
 bool chunkHelper::IsValidChunk(data::ChunkInfo& chunk)
 {
     // crc checking
@@ -182,10 +209,14 @@ data::DecodedImageInfo chunkHelper::CreateFullImageInfo(
     const data::DataChunk& data,
     const data::HeaderChunk& header,
     const data::PaletChunk& palet,
-    const data::TransParencyChunk& trans)
+    const data::TransParencyChunk& trans,
+    const data::GammaChunk& gamma)
 {
     data::DecodedImageInfo res;
     res.bitDepth = header.bitDepth;
+    const double MAX_GAMMA = 100000;
+    if (gamma.initialized)
+        res.gamma = gamma.gamma / MAX_GAMMA;
     res.type = GetImageType(header.bitDepth, header.colorType);
     res.pixels.resize(header.height, std::vector<data::Pixel>(header.width));
     byte inc = GetSamplePerPixel(header.colorType, header.bitDepth);

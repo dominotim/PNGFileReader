@@ -15,12 +15,16 @@ void DecodeTransparencyChunk(
     const bytes& data,
     const data::HeaderChunk& header,
     data::TransParencyChunk& chunk);
+void DecodeGammaChunk(const bytes& data, data::GammaChunk& chunk);
+void DecodeChromatChunk(const bytes& data, data::PrimaryChromaticitiesChunk& chunk);
+void DecodeStandartRGBChunk(const bytes& data, data::StandartRGBChunk& chunk);
 bool IsValidChunk(data::ChunkInfo& chunk);
 data::DecodedImageInfo CreateFullImageInfo(
     const data::DataChunk& data,
     const data::HeaderChunk& header,
     const data::PaletChunk& palet,
-    const data::TransParencyChunk& trans);
+    const data::TransParencyChunk& trans,
+    const data::GammaChunk& gamma);
 }
 }
 #endif // _DM_PNG_DECODE_HELPER_
