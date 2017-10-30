@@ -6,7 +6,7 @@
 namespace png
 {
 
-png::PNGReader::PNGReader() : m_position(0)
+png::PNGReader::PNGReader() : m_pos(0)
 {
 }
 
@@ -14,23 +14,22 @@ bool png::PNGReader::Read()
 {
     if (!CheckHeader())
         return false;
-
-    chunks::Header      header;
-    chunks::Data        data;
-    chunks::Pallet      palet;
-    chunks::Transparent transp;
+    using namespace chunks;
+    Header       header;
+    Data         data;
+    Pallet       palet;
+    Transparent  transp;
     Decompressor inflator;
-
-    for(chunks::ChunkInfo info = NextChunk(); info.type != chunks::IEND; info = NextChunk())
+    for(ChunkInfo info = GetChunk(); info.type != IEND; info = GetChunk())
     {
         if(!helper::IsValidChunk(info))
             throw "Error";
         switch (info.type)
         {
-            case chunks::IHDR: chunks::Header::Read(info.data, header); break;
-            case chunks::IDAT: chunks::Data::Read(info.data, header, data, inflator); break;
-            case chunks::PLTE: chunks::Pallet::Read(info.data, palet); break;
-            case chunks::tRNS: chunks::Transparent::Read(info.data, header, transp); break;
+            case IHDR: Header::Read(info.data, header); break;
+            case IDAT: Data::Read(info.data, header, data, inflator); break;
+            case PLTE: Pallet::Read(info.data, palet); break;
+            case tRNS: Transparent::Read(info.data, header, transp); break;
             default: break;
         }
     }
@@ -42,51 +41,47 @@ bool png::PNGReader::Read()
     return true;
 }
 
-void png::PNGReader::Read(const std::string& file_path)
-{
-    try
-    {
-        std::ifstream inputStream;
-        inputStream.open(file_path.c_str(), std::ios::binary | std::ios::ate);
-        std::ifstream::pos_type pos = inputStream.tellg();
-        inputStream.seekg(0, std::ios::beg);
-        Init(inputStream, pos);
-        Read();
-        inputStream.close();
-    }
-    catch (...)
-    {
-        throw "Error";
-    }
+void png::PNGReader::Read(const std::string& path)
+{ 
+    std::ifstream file;
+    file.open(path.c_str(), std::ios::binary | std::ios::ate);
+    std::ifstream::pos_type pos = file.tellg();
+    file.seekg(0, std::ios::beg);
+    Init(file, pos);
+    Read();
+    file.close();
 }
 
-bool png::PNGReader::CheckHeader()
+void png::PNGReader::Init(
+    std::ifstream& file,
+    std::ifstream::pos_type pos)
 {
-    const bytes HEADER_SYMBOLS = { 137, 80, 78, 71, 13, 10, 26, 10 };
-    const byte HEADER_LENGTH = 8;
-    if (m_bytes.size() < HEADER_LENGTH)
-        return false;
-    m_position += HEADER_LENGTH;
-    return std::equal(m_bytes.begin(),
-                      m_bytes.begin() + HEADER_LENGTH,
-                      HEADER_SYMBOLS.begin());
-}
-
-void png::PNGReader::Init(std::ifstream& file, std::ifstream::pos_type pos)
-{
-    m_position = 0;
+    m_pos = 0;
     m_bytes.resize(pos);
     file.read(reinterpret_cast<char*>(&m_bytes[0]), pos);
 }
 
-png::chunks::ChunkInfo PNGReader::NextChunk()
+bool png::PNGReader::CheckHeader()
 {
+    const bytes SYMBOLS =
+    { 137, 80, 78, 71, 13, 10, 26, 10 };
+    const byte LENGTH = 8;
+    if (m_bytes.size() < LENGTH)
+        return false;
+    m_pos += LENGTH;
+    return std::equal(m_bytes.begin(),
+        m_bytes.begin() + LENGTH, SYMBOLS.begin());
+}
+
+png::chunks::ChunkInfo PNGReader::GetChunk()
+{
+    const auto Get32 = helper::GetInt32ValueAndIncIdx;
     chunks::ChunkInfo res;
-    res.length = helper::GetInt32ValueAndIncIdx(m_bytes, m_position);
-    res.type = static_cast<chunks::ChunkType>(helper::GetInt32ValueAndIncIdx(m_bytes, m_position));
-    res.data.assign(&m_bytes[m_position], &m_bytes[m_position + res.length]);
-    m_position += res.length;
-    res.crc = helper::GetInt32ValueAndIncIdx(m_bytes, m_position);
+    res.length = Get32(m_bytes, m_pos);
+    res.type = chunks::ChunkType(Get32(m_bytes, m_pos));
+    res.data.assign(&m_bytes[m_pos], &m_bytes[m_pos + res.length]);
+    m_pos += res.length;
+    res.crc = Get32(m_bytes, m_pos);
     return  res;
 }
 

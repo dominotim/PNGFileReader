@@ -117,9 +117,6 @@ struct Transparent
         const Header& header, Transparent& chunk);
 };
 
-const size_t HEADER_LENGTH = 8;
-const std::vector<byte> HEADER_SYMBOLS = { 137, 80, 78, 71, 13, 10, 26, 10 };
-
 } // chunks
 
 namespace helper

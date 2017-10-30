@@ -13,14 +13,14 @@ class PNGReader
 {
 public:
     PNGReader();
-    void Read(const std::string& file_path);
+    void Read(const std::string& path);
 private:
     bool Read();
     bool CheckHeader();
     void Init(std::ifstream& file, std::ifstream::pos_type pos);
-    chunks::ChunkInfo NextChunk();
+    chunks::ChunkInfo GetChunk();
     std::vector<byte> m_bytes;
-    size_t m_position;
+    size_t m_pos;
 };
 }
 #endif //_DM_PNG_READER_
