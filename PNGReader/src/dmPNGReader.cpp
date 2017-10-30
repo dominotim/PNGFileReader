@@ -31,11 +31,6 @@ bool png::PNGReader::Read()
             default: break;
         }
     }
-    /*REMOVE LATER*/
-    image::DecodedImageInfo inf = helper::CreateFullImageInfo(data, header, palet, transp);
-    dmImage im(inf.pixels, inf.bitDepth == 16);
-    DrawImage(im);
-    /*REMOVE LATER*/
     return true;
 }
 
