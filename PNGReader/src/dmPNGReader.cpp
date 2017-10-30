@@ -6,24 +6,22 @@
 namespace png
 {
 
-png::PNGReader::PNGReader() : m_pos(0)
-{
-}
+png::PNGReader::PNGReader() : m_pos(0) {}
 
 bool png::PNGReader::Read()
 {
     if (!CheckHeader())
         return false;
+    chunks::Header       header;
+    chunks::Data         data;
+    chunks::Pallet       palet;
+    chunks::Transparent  transp;
+    Decompressor         inflator;
     using namespace chunks;
-    Header       header;
-    Data         data;
-    Pallet       palet;
-    Transparent  transp;
-    Decompressor inflator;
     for(ChunkInfo info = GetChunk(); info.type != IEND; info = GetChunk())
     {
         if(!helper::IsValidChunk(info))
-            throw "Error";
+            throw std::runtime_error("Invalid chunk crc sum");
         switch (info.type)
         {
             case IHDR: Header::Read(info.data, header); break;
