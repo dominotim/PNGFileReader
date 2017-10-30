@@ -6,7 +6,7 @@
 #include "zlib.h"
 #include <vector>
 #include <iostream>
-namespace dm
+namespace png
 {
 class Decompressor
 {

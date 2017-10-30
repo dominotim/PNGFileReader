@@ -2,17 +2,15 @@
 #define _DM_IMAGE_
 
 #include <vector>
-#include "dmDataStructure.hpp"
+#include "dmPNGChunks.hpp"
 #include "tgaimage.hpp"
-#include "dmPNGChunkHelper.hpp"
-
-namespace dm
+namespace png
 {
 class dmImage
 {
 public:
-    typedef std::vector<dm::data::Pixel>    Pixels;
-    typedef std::vector<Pixels>         PixelsArray;
+    typedef std::vector<png::image::Pixel> Pixels;
+    typedef std::vector<Pixels>            PixelsArray;
     dmImage(const PixelsArray& pixels, const bool is16Bit)
         :m_height(pixels.size()),
         m_width(pixels[0].size()),
@@ -50,7 +48,7 @@ public:
         return m_gamma;
     }
 
-    data::Pixel operator()(size_t i, size_t j) const
+    image::Pixel operator()(size_t i, size_t j) const
     {
         return m_pixels[i][j];
     }

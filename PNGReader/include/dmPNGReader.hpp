@@ -1,12 +1,13 @@
 /******************************************************************************
 (C) 2017 Author: Artem Avdoshkin
 ******************************************************************************/
-#include "dmDataStructure.hpp"
-#include <fstream>
-
 #ifndef _DM_PNG_READER_
 #define _DM_PNG_READER_
-namespace dm
+#include "dmPNGChunks.hpp"
+#include <fstream>
+
+
+namespace png
 {
 class PNGReader
 {
@@ -14,10 +15,10 @@ public:
     PNGReader();
     void Read(const std::string& file_path);
 private:
-    bool Parse();
+    bool Read();
     bool CheckHeader();
     void Init(std::ifstream& file, std::ifstream::pos_type pos);
-    data::ChunkInfo NextChunk();
+    chunks::ChunkInfo NextChunk();
     std::vector<byte> m_bytes;
     size_t m_position;
 };

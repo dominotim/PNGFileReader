@@ -5,7 +5,7 @@
 #ifndef _DM_FILTERS_
 #define _DM_FILTERS_
 #include <vector>
-namespace dm
+namespace png
 {
 namespace
 {
