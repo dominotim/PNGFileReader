@@ -31,6 +31,10 @@ bool png::PNGReader::Read()
             default: break;
         }
     }
+    image::DecodedImageInfo inf =
+        helper::CreateFullImageInfo(data, header, palet, transp);
+    dmImage im(inf.pixels, inf.bitDepth == 16);
+    DrawImage(im);
     return true;
 }
 
@@ -47,7 +51,7 @@ void png::PNGReader::Read(const std::string& path)
 
 void png::PNGReader::Init(
     std::ifstream& file,
-    std::ifstream::pos_type pos)
+    const std::ifstream::pos_type pos)
 {
     m_pos = 0;
     m_bytes.resize(pos);

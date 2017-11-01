@@ -9,6 +9,8 @@ namespace png
 {
 namespace
 {
+typedef std::uint8_t byte;
+
 int PaethPredictor(const int a, const int b, const int c)
 {
     const int p = a + b - c;
@@ -24,12 +26,10 @@ int PaethPredictor(const int a, const int b, const int c)
 }
 namespace Unfilter
 {
-template <typename byte>
 void None(std::vector<std::vector<byte> >& /*scanlines*/, const size_t /*slIdx*/, const size_t /*shift*/)
 {
 }
 
-template <typename byte>
 void Sub(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const size_t shift)
 {
     for (size_t i = shift + 1; i < scanlines[slIdx].size(); ++i)
@@ -38,7 +38,6 @@ void Sub(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const s
     }
 }
 
-template <typename byte>
 void Up(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const size_t shift)
 {
     if (slIdx == 0)
@@ -49,7 +48,6 @@ void Up(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const si
     }
 }
 
-template <typename byte>
 void Average(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const size_t shift)
 {
     for (size_t i = 1; i < scanlines[slIdx].size(); ++i)
@@ -60,7 +58,6 @@ void Average(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, con
     }
 }
 
-template <typename byte>
 void Paeth(std::vector<std::vector<byte> >& scanlines, const size_t slIdx, const size_t shift)
 {
     for (size_t i = 1; i < scanlines[slIdx].size(); ++i)

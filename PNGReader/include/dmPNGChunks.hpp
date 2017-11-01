@@ -111,7 +111,7 @@ struct Transparent
 {
     std::vector<byte> paleteTransparents;
     uint16 transparent;
-    uint16 transparentRGB[3];
+    std::array<uint16, 3> transparentRGB;
     bool initialized = false;
     static void Read(const bytes& helper,
         const Header& header, Transparent& chunk);
