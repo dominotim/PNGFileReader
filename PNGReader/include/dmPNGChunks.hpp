@@ -57,6 +57,9 @@ struct DecodedImageInfo
 namespace chunks
 {
 
+const bytes HEAD_SYMBOLS =
+{ 137, 80, 78, 71, 13, 10, 26, 10 };
+
 constexpr uint32 CODE(const char* const str)
 {
     return (str[0] << 24) + (str[1] << 16) + (str[2] << 8) + str[3];
@@ -89,14 +92,17 @@ struct Header
     byte compressionMethod;
     byte filterMethod;
     byte interlaceMethod;
-    static void Read(const bytes& helper, Header& chunk);
+    static void Read(const bytes& data, Header& chunk);
+    static void Write(const Header& chunk, bytes& data);
 };
 
 struct Data
 {
     std::vector<std::vector<uint16> > decodedScanlines;
-    static void Read(const bytes& helper,
+    static void Read(const bytes& data,
         const Header& header, Data& chunk, Decompressor& decoder);
+    static void Write(const chunks::Data& chunk,
+        Decompressor& decoder, bytes& data);
 };
 
 struct Pallet
@@ -104,7 +110,7 @@ struct Pallet
     typedef std::array<uint16, 4> Pix;
     std::vector<Pix> colorsByIdx;
     bool initialized = false;
-    static void Read(const bytes& helper, Pallet& chunk);
+    static void Read(const bytes& data, Pallet& chunk);
 };
 
 struct Transparent
@@ -113,7 +119,7 @@ struct Transparent
     uint16 transparent;
     std::array<uint16, 3> transparentRGB;
     bool initialized = false;
-    static void Read(const bytes& helper,
+    static void Read(const bytes& data,
         const Header& header, Transparent& chunk);
 };
 
@@ -122,7 +128,9 @@ struct Transparent
 namespace helper
 {
 uint32 GetInt32ValueAndIncIdx(const bytes& data, size_t& idx);
+std::tuple<byte, byte, byte, byte> GetBytesFromInt32(const uint32 value);
 bool IsValidChunk(chunks::ChunkInfo& chunk);
+uint32 GetCrc(chunks::ChunkInfo& chunk);
 image::DecodedImageInfo CreateFullImageInfo(
     const chunks::Data& data,
     const chunks::Header& header,

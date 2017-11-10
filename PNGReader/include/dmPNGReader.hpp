@@ -9,16 +9,21 @@
 
 namespace png
 {
+class dmImage;
+
 class PNGReader
 {
 public:
     PNGReader();
-    void Read(const std::string& path);
+    void Read(const std::string& path, png::dmImage& image);
+    void Write(const std::string& path, const png::dmImage& toWrite);
 private:
-    bool Read();
+    bool Read(png::dmImage& image);
     bool CheckHeader();
     void Init(std::ifstream& file, std::ifstream::pos_type pos);
     chunks::ChunkInfo GetChunk();
+
+    bytes ConvertImgToByteString(const png::dmImage& src);
     std::vector<byte> m_bytes;
     size_t m_pos;
 };

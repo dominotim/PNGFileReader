@@ -7,11 +7,11 @@ namespace png
 {
 namespace
 {
-union
+union Converter
 {
     uint32 value;
     struct { byte b1; byte b2; byte b3; byte b4; } bytes;
-} converter;
+};
 
 byte GetSamplePerPixel(const byte colorType, const byte bitDepth)
 {
@@ -90,14 +90,24 @@ std::vector<std::vector<uint16> > GetScanlines(const bytes& data, const chunks::
 
 uint32 helper::GetInt32ValueAndIncIdx(const bytes& data, size_t& idx)
 {
+    Converter converter;
     converter.bytes = { data[idx + 3], data[idx + 2], data[idx + 1], data[idx] };
     idx += 4;
     return converter.value;
 }
 
+std::tuple<byte, byte, byte, byte> helper::GetBytesFromInt32(const uint32 value)
+{
+    Converter converter;
+    converter.value = value;
+    return std::make_tuple(converter.bytes.b4,
+        converter.bytes.b3, converter.bytes.b2, converter.bytes.b1);
+}
+
 bool helper::IsValidChunk(chunks::ChunkInfo& chunk)
 {
     uint32 r = 0xffffffffu;
+    Converter converter;
     converter.value = chunk.type;
     r = crcTable[(r ^ converter.bytes.b4) & 0xff] ^ (r >> 8);
     r = crcTable[(r ^ converter.bytes.b3) & 0xff] ^ (r >> 8);
@@ -109,6 +119,20 @@ bool helper::IsValidChunk(chunks::ChunkInfo& chunk)
     return ((r ^ 0xffffffffu) == chunk.crc);
 }
 
+uint32 helper::GetCrc(chunks::ChunkInfo& chunk)
+{
+    uint32 r = 0xffffffffu;
+    Converter converter;
+    converter.value = chunk.type;
+    r = crcTable[(r ^ converter.bytes.b4) & 0xff] ^ (r >> 8);
+    r = crcTable[(r ^ converter.bytes.b3) & 0xff] ^ (r >> 8);
+    r = crcTable[(r ^ converter.bytes.b2) & 0xff] ^ (r >> 8);
+    r = crcTable[(r ^ converter.bytes.b1) & 0xff] ^ (r >> 8);
+    for (size_t i = 0; i < chunk.data.size(); ++i)
+        r = crcTable[(r ^ chunk.data[i]) & 0xff] ^ (r >> 8);
+
+    return (r ^ 0xffffffffu);
+}
 
 image::DecodedImageInfo helper::CreateFullImageInfo(
     const chunks::Data& data,
@@ -170,12 +194,50 @@ void chunks::Header::Read(const bytes& data, chunks::Header& chunk)
     chunk.interlaceMethod = data[idx++];
 }
 
+void chunks::Header::Write(const chunks::Header& chunk, bytes& data)
+{
+    size_t start = data.size();
+    data.resize(start + 13);
+    std::tie(data[start], data[start + 1], data[start + 2], data[start + 3]) =
+        helper::GetBytesFromInt32(chunk.width);
+    std::tie(data[start + 4], data[start + 5], data[start + 6], data[start + 7]) =
+        helper::GetBytesFromInt32(chunk.height);
+    data[start + 8] = chunk.bitDepth;
+    data[start + 9] = chunk.colorType;
+    data[start + 10] = chunk.compressionMethod;
+    data[start + 11] = chunk.filterMethod;
+    data[start + 12] = chunk.interlaceMethod;
+}
+
 void chunks::Data::Read(const bytes& data,
     const chunks::Header& header, chunks::Data& chunk, Decompressor& decoder)
 {
     const std::vector<byte> uncompressed = decoder.Decompress(data);
     if(!uncompressed.empty())
         chunk.decodedScanlines = GetScanlines(uncompressed, header);
+}
+
+bytes ConvertScanlineToByteArray(const std::vector<std::vector<uint16> >& scanlines)
+{
+    const size_t lineLen =  scanlines[0].size() + 1;
+    bytes res(scanlines.size() * lineLen);
+    for (size_t i = 0, idx = 0; i < scanlines.size(); ++i)
+    {
+        res[idx++] = 0;
+        for(size_t j = 0; j < scanlines[i].size(); ++j)
+        {
+            res[idx++] = scanlines[i][j];
+        }
+    }
+    return res;
+}
+void chunks::Data::Write(const chunks::Data& chunk, Decompressor& decoder, bytes& data)
+{
+    bytes uncompressed = ConvertScanlineToByteArray(chunk.decodedScanlines);
+    uncompressed = decoder.Compress(uncompressed);
+    size_t start = data.size();
+    data.resize(start + uncompressed.size());
+    std::copy(uncompressed.begin(), uncompressed.end(), data.begin() + start);
 }
 
 void chunks::Pallet::Read(const bytes& data, chunks::Pallet& chunk)

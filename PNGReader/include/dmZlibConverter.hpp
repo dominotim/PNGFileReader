@@ -40,6 +40,27 @@ public:
         return res;
     }
 
+    std::vector<byte> Compress(const std::vector<byte>& bytes)
+    {
+        z_stream defstream;
+        defstream.zalloc = Z_NULL;
+        defstream.zfree = Z_NULL;
+        defstream.opaque = Z_NULL;
+        Bytef* data = (Bytef*)(&bytes[0]);
+        byte * compressed = (byte*)malloc(bytes.size());
+        // setup "a" as the input and "b" as the compressed output
+        defstream.avail_in = (uInt)bytes.size() + 1; // size of input, string + terminator
+        defstream.next_in = data; // input char array
+        defstream.avail_out = (uInt)bytes.size(); // size of output
+        defstream.next_out = (Bytef *)compressed; // output char array
+
+                                         // the actual compression work.
+        deflateInit(&defstream, Z_BEST_COMPRESSION);
+        deflate(&defstream, Z_FINISH);
+        deflateEnd(&defstream);
+        return std::vector<byte>(compressed, compressed + defstream.total_out);
+    }
+
 private:
     int Inflate(
         Bytef *inflated,

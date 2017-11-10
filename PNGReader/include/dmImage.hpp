@@ -11,6 +11,9 @@ class dmImage
 public:
     typedef std::vector<png::image::Pixel> Pixels;
     typedef std::vector<Pixels>            PixelsArray;
+    dmImage()
+    {
+    }
     dmImage(const PixelsArray& pixels, const bool is16Bit)
         :m_height(pixels.size()),
         m_width(pixels[0].size()),
@@ -48,9 +51,15 @@ public:
         return m_gamma;
     }
 
-    image::Pixel operator()(size_t i, size_t j) const
+    const image::Pixel& operator()(size_t i, size_t j) const
     {
         return m_pixels[i][j];
+    }
+
+    const std::tuple<uint16, uint16, uint16, uint16> get(size_t i, size_t j) const
+    {
+        return std::make_tuple(m_pixels[i][j].red,
+            m_pixels[i][j].green, m_pixels[i][j].blue, m_pixels[i][j].alfa);
     }
 
 private:
@@ -60,23 +69,6 @@ private:
     bool m_is16BitPepth;
     double m_gamma;
 };
-
-void DrawImage(const dmImage& src)
-{
-    TGAImage im(src.GetWidth(), src.GetHeight(), TGAImage::RGBA);
-    for (size_t w = 0; w < src.GetWidth(); ++w)
-    {
-        for (size_t h = 0; h < src.GetHeight(); ++h)
-        {
-            byte r = src.Is16BitDepth() ? 255 * (1. * src(h, w).red / 0xffffu)   : src(h, w).red;
-            byte g = src.Is16BitDepth() ? 255 * (1. * src(h, w).green / 0xffffu) : src(h, w).green;
-            byte b = src.Is16BitDepth() ? 255 * (1. * src(h, w).blue / 0xffffu)  : src(h, w).blue;
-            byte a = src.Is16BitDepth() ? 255 * (1. * src(h, w).alfa / 0xffffu)  : src(h, w).alfa;
-            im.set(w, h, TGAColor(r, g, b, a));
-        }
-    }
-    im.write_tga_file("output.tga");
-}
 
 }
 #endif // _DM_IMAGE_
