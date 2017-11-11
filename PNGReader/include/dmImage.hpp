@@ -1,37 +1,39 @@
+/******************************************************************************
+(C) 2017 Author: Artem Avdoshkin
+******************************************************************************/
 #ifndef _DM_IMAGE_
 #define _DM_IMAGE_
 
 #include <vector>
 #include "dmPNGChunks.hpp"
-#include "tgaimage.hpp"
+
 namespace png
 {
 class dmImage
 {
 public:
-    typedef std::vector<png::image::Pixel> Pixels;
+    typedef std::vector<image::Pixel>      Pixels;
     typedef std::vector<Pixels>            PixelsArray;
     dmImage()
     {
     }
     dmImage(const PixelsArray& pixels, const bool is16Bit)
-        :m_height(pixels.size()),
-        m_width(pixels[0].size()),
+        :m_height(static_cast<uint32>(pixels.size())),
+        m_width(static_cast<uint32>(pixels[0].size())),
         m_pixels(pixels),
-        m_is16BitPepth(is16Bit),
-        m_gamma(1)
+        m_is16BitPepth(is16Bit)
     {
     }
     const PixelsArray& GetPixels() const
     {
         return m_pixels;
     }
-    const size_t GetWidth() const
+    const uint32 GetWidth() const
     {
         return m_width;
     }
 
-    const size_t GetHeight() const
+    const uint32 GetHeight() const
     {
         return m_height;
     }
@@ -39,16 +41,6 @@ public:
     const bool Is16BitDepth() const
     {
         return m_is16BitPepth;
-    }
-
-    void SetGamma(const double gamma)
-    {
-        m_gamma = gamma;
-    }
-
-    const double GetGamma() const
-    {
-        return m_gamma;
     }
 
     const image::Pixel& operator()(size_t i, size_t j) const
@@ -64,10 +56,9 @@ public:
 
 private:
     PixelsArray m_pixels;
-    size_t m_height;
-    size_t m_width;
+    uint32 m_height;
+    uint32 m_width;
     bool m_is16BitPepth;
-    double m_gamma;
 };
 
 }

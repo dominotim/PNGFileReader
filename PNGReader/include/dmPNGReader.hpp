@@ -6,7 +6,6 @@
 #include "dmPNGChunks.hpp"
 #include <fstream>
 
-
 namespace png
 {
 class dmImage;
@@ -21,9 +20,8 @@ private:
     bool Read(png::dmImage& image);
     bool CheckHeader();
     void Init(std::ifstream& file, std::ifstream::pos_type pos);
-    chunks::ChunkInfo GetChunk();
+    chunks::ChunkInfo GetNetxChunk();
 
-    bytes ConvertImgToByteString(const png::dmImage& src);
     std::vector<byte> m_bytes;
     size_t m_pos;
 };

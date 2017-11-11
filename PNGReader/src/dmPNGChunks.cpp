@@ -1,7 +1,15 @@
+/******************************************************************************
+(C) 2017 Author: Artem Avdoshkin
+******************************************************************************/
 #include "stdafx.h"
 #include "dmPNGChunks.hpp"
-#include "..\include\dmCRCTable.hpp"
+#include "dmImage.hpp"
+#include "dmCRCTable.hpp"
+
+#include <map>
 #include <array>
+#include <algorithm>
+#include <functional>
 
 namespace png
 {
@@ -46,9 +54,10 @@ std::vector<std::vector<uint16> > GetScanlines(const bytes& data, const chunks::
     const size_t MAXBITS = 16;
     const byte SAMPLES_PER_PIXEL =
         GetSamplePerPixel(header.colorType, header.bitDepth);
-    const size_t lineLen = SAMPLES_PER_PIXEL
-        * std::ceil(header.width * (header.bitDepth * 2. / MAXBITS)) + 1;
-    const size_t bytesPerPixel = SAMPLES_PER_PIXEL * std::ceil(header.bitDepth * 1. / 8);
+    const size_t lineLen = static_cast<size_t>(SAMPLES_PER_PIXEL
+        * std::ceil(header.width * (header.bitDepth * 2. / MAXBITS)) + 1);
+    const size_t bytesPerPixel = static_cast<size_t>(
+        SAMPLES_PER_PIXEL * std::ceil(header.bitDepth * 1. / 8));
     for (size_t i = 0, idx = 0; i < header.height; ++i)
     {
         bytes[i].resize(lineLen);
@@ -61,7 +70,7 @@ std::vector<std::vector<uint16> > GetScanlines(const bytes& data, const chunks::
         case 2:png::Unfilter::Up(bytes, i, bytesPerPixel); break;
         case 3:png::Unfilter::Average(bytes, i, bytesPerPixel); break;
         case 4:png::Unfilter::Paeth(bytes, i, bytesPerPixel); break;
-        default: throw "e";
+        default: throw std::runtime_error("Invalid type of png filter");
         }
     }
     std::for_each(bytes.begin(), bytes.end(), [](png::bytes& vec)->void {
@@ -104,21 +113,6 @@ std::tuple<byte, byte, byte, byte> helper::GetBytesFromInt32(const uint32 value)
         converter.bytes.b3, converter.bytes.b2, converter.bytes.b1);
 }
 
-bool helper::IsValidChunk(chunks::ChunkInfo& chunk)
-{
-    uint32 r = 0xffffffffu;
-    Converter converter;
-    converter.value = chunk.type;
-    r = crcTable[(r ^ converter.bytes.b4) & 0xff] ^ (r >> 8);
-    r = crcTable[(r ^ converter.bytes.b3) & 0xff] ^ (r >> 8);
-    r = crcTable[(r ^ converter.bytes.b2) & 0xff] ^ (r >> 8);
-    r = crcTable[(r ^ converter.bytes.b1) & 0xff] ^ (r >> 8);
-    for (size_t i = 0; i < chunk.data.size(); ++i)
-        r = crcTable[(r ^ chunk.data[i]) & 0xff] ^ (r >> 8);
-
-    return ((r ^ 0xffffffffu) == chunk.crc);
-}
-
 uint32 helper::GetCrc(chunks::ChunkInfo& chunk)
 {
     uint32 r = 0xffffffffu;
@@ -132,6 +126,37 @@ uint32 helper::GetCrc(chunks::ChunkInfo& chunk)
         r = crcTable[(r ^ chunk.data[i]) & 0xff] ^ (r >> 8);
 
     return (r ^ 0xffffffffu);
+}
+
+bool helper::IsValidChunk(chunks::ChunkInfo& chunk)
+{
+    return GetCrc(chunk) == chunk.crc;
+}
+
+std::vector<std::vector<uint16> > helper::GetScanlines(const dmImage& src)
+{
+    const byte SAMPLES_PER_PIXEL = 4;
+    std::vector<std::vector<uint16> > res(src.GetHeight());
+    for (size_t i = 0; i < src.GetHeight(); ++i)
+    {
+        res[i].resize(src.GetWidth()* SAMPLES_PER_PIXEL);
+        for (size_t j = 0, idx = 0; j < src.GetWidth() * SAMPLES_PER_PIXEL; j += 4)
+        {
+            std::tie(res[i][j], res[i][j + 1], res[i][j + 2], res[i][j + 3]) = src.get(i, idx);
+            ++idx;
+        }
+    }
+    return res;
+}
+
+void helper::AddInt32ValueToByteArray(const uint32 num, bytes& str)
+{
+    const size_t size = str.size();
+    str.resize(size + 4);
+    std::tie(str[size],
+        str[size + 1],
+        str[size + 2],
+        str[size + 3]) = helper::GetBytesFromInt32(num);
 }
 
 image::DecodedImageInfo helper::CreateFullImageInfo(
@@ -217,7 +242,7 @@ void chunks::Data::Read(const bytes& data,
         chunk.decodedScanlines = GetScanlines(uncompressed, header);
 }
 
-bytes ConvertScanlineToByteArray(const std::vector<std::vector<uint16> >& scanlines)
+bytes ConvertScanlineToByteArray(const std::vector<std::vector<uint16> >& scanlines, const bool is16Bit)
 {
     const size_t lineLen =  scanlines[0].size() + 1;
     bytes res(scanlines.size() * lineLen);
@@ -226,14 +251,16 @@ bytes ConvertScanlineToByteArray(const std::vector<std::vector<uint16> >& scanli
         res[idx++] = 0;
         for(size_t j = 0; j < scanlines[i].size(); ++j)
         {
-            res[idx++] = scanlines[i][j];
+            res[idx++] = static_cast<byte>(
+                is16Bit ? 255 * (1. * scanlines[i][j] / 0xffffu) : scanlines[i][j]);
         }
     }
     return res;
 }
-void chunks::Data::Write(const chunks::Data& chunk, Decompressor& decoder, bytes& data)
+void chunks::Data::Write(const chunks::Data& chunk,
+    Decompressor& decoder, bytes& data, const bool is16Bit)
 {
-    bytes uncompressed = ConvertScanlineToByteArray(chunk.decodedScanlines);
+    bytes uncompressed = ConvertScanlineToByteArray(chunk.decodedScanlines, is16Bit);
     uncompressed = decoder.Compress(uncompressed);
     size_t start = data.size();
     data.resize(start + uncompressed.size());
@@ -243,7 +270,7 @@ void chunks::Data::Write(const chunks::Data& chunk, Decompressor& decoder, bytes
 void chunks::Pallet::Read(const bytes& data, chunks::Pallet& chunk)
 {
     if(data.size() % 3 != 0)
-        throw "Error";
+        throw std::runtime_error("Invalid number of elements in pallet chunk");
     chunk.colorsByIdx.clear();
     for(size_t i = 0; i < data.size(); i += 3)
     {
@@ -258,8 +285,10 @@ void chunks::Transparent::Read(
 {
     switch (header.colorType)
     {
-        case 0 : chunk.transparentRGB = { (data[0] << 8) + data[1],
-            (data[2] << 8) + data[3],(data[4] << 8) + data[5] };
+        case 0 : chunk.transparentRGB = {
+            static_cast<uint16>((data[0] << 8) + data[1]),
+            static_cast<uint16>((data[2] << 8) + data[3]),
+            static_cast<uint16>((data[4] << 8) + data[5]) };
         break;
         case 2 : chunk.transparent = (data[0] << 8) + data[1]; break;
         case 3 : chunk.paleteTransparents.clear();

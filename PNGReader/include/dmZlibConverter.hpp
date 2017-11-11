@@ -17,7 +17,7 @@ public:
 
     std::vector<byte> Decompress(const std::vector<byte>& bytes)
     {
-        const ulon sizeDataCompressed = bytes.size();
+        const ulon sizeDataCompressed = static_cast<ulon>(bytes.size());
         const Bytef* dataCompressed   = (Bytef*)(&bytes[0]);
         ulon sizeDataUncompressed     = (sizeDataCompressed * 100);
         byte * dataUncompressed       = (byte*)malloc(sizeDataUncompressed);

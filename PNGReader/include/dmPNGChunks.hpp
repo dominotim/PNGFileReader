@@ -4,14 +4,11 @@
 #ifndef _DM_DATA_STRUCTURES_
 #define _DM_DATA_STRUCTURES_
 
-#include <vector>
-#include <map>
-#include <functional>
-#include <algorithm>
-#include <array>
 #include "dmFilters.hpp"
 #include "dmZlibConverter.hpp"
 
+#include <vector>
+#include <array>
 
 namespace png
 {
@@ -78,7 +75,7 @@ enum ChunkType : uint32
 struct ChunkInfo
 {
     std::vector<byte> data;
-    size_t length;
+    uint32 length;
     ChunkType type;
     uint32 crc;
 };
@@ -102,7 +99,7 @@ struct Data
     static void Read(const bytes& data,
         const Header& header, Data& chunk, Decompressor& decoder);
     static void Write(const chunks::Data& chunk,
-        Decompressor& decoder, bytes& data);
+        Decompressor& decoder, bytes& data, const bool is16Bit);
 };
 
 struct Pallet
@@ -124,13 +121,21 @@ struct Transparent
 };
 
 } // chunks
-
+class dmImage;
 namespace helper
 {
 uint32 GetInt32ValueAndIncIdx(const bytes& data, size_t& idx);
+
 std::tuple<byte, byte, byte, byte> GetBytesFromInt32(const uint32 value);
+
 bool IsValidChunk(chunks::ChunkInfo& chunk);
+
 uint32 GetCrc(chunks::ChunkInfo& chunk);
+
+std::vector<std::vector<uint16> > GetScanlines(const png::dmImage& src);
+
+void AddInt32ValueToByteArray(const uint32 num, bytes& str);
+
 image::DecodedImageInfo CreateFullImageInfo(
     const chunks::Data& data,
     const chunks::Header& header,
