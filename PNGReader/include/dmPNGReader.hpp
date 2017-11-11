@@ -15,7 +15,7 @@ class PNGReader
 public:
     PNGReader();
     void Read(const std::string& path, png::dmImage& image);
-    void Write(const std::string& path, const png::dmImage& toWrite);
+    void Write(const std::string& path, const png::dmImage& image);
 private:
     bool Read(png::dmImage& image);
     bool CheckHeader();
