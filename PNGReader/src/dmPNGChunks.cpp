@@ -97,12 +97,9 @@ std::vector<std::vector<uint16> > GetScanlines(const bytes& data, const chunks::
 
 } // namespace
 
-uint32 helper::GetInt32ValueAndIncIdx(const bytes& data, size_t& idx)
+bool helper::IsValidChunk(chunks::ChunkInfo& chunk)
 {
-    Converter converter;
-    converter.bytes = { data[idx + 3], data[idx + 2], data[idx + 1], data[idx] };
-    idx += 4;
-    return converter.value;
+    return GetCrc(chunk) == chunk.crc;
 }
 
 std::tuple<byte, byte, byte, byte> helper::GetBytesFromInt32(const uint32 value)
@@ -111,6 +108,24 @@ std::tuple<byte, byte, byte, byte> helper::GetBytesFromInt32(const uint32 value)
     converter.value = value;
     return std::make_tuple(converter.bytes.b4,
         converter.bytes.b3, converter.bytes.b2, converter.bytes.b1);
+}
+
+uint32 helper::GetInt32ValueAndIncIdx(const bytes& data, size_t& idx)
+{
+    Converter converter;
+    converter.bytes = { data[idx + 3], data[idx + 2], data[idx + 1], data[idx] };
+    idx += 4;
+    return converter.value;
+}
+
+void helper::AddInt32ValueToByteArray(const uint32 num, bytes& str)
+{
+    const size_t size = str.size();
+    str.resize(size + 4);
+    std::tie(str[size],
+        str[size + 1],
+        str[size + 2],
+        str[size + 3]) = helper::GetBytesFromInt32(num);
 }
 
 uint32 helper::GetCrc(chunks::ChunkInfo& chunk)
@@ -128,9 +143,20 @@ uint32 helper::GetCrc(chunks::ChunkInfo& chunk)
     return (r ^ 0xffffffffu);
 }
 
-bool helper::IsValidChunk(chunks::ChunkInfo& chunk)
+bytes ConvertScanlineToByteArray(const std::vector<std::vector<uint16> >& scanlines, const bool is16Bit)
 {
-    return GetCrc(chunk) == chunk.crc;
+    const size_t lineLen = scanlines[0].size() + 1;
+    bytes res(scanlines.size() * lineLen);
+    for (size_t i = 0, idx = 0; i < scanlines.size(); ++i)
+    {
+        res[idx++] = 0;
+        for (size_t j = 0; j < scanlines[i].size(); ++j)
+        {
+            res[idx++] = static_cast<byte>(
+                is16Bit ? 255 * (1. * scanlines[i][j] / 0xffffu) : scanlines[i][j]);
+        }
+    }
+    return res;
 }
 
 std::vector<std::vector<uint16> > helper::GetScanlines(const dmImage& src)
@@ -147,16 +173,6 @@ std::vector<std::vector<uint16> > helper::GetScanlines(const dmImage& src)
         }
     }
     return res;
-}
-
-void helper::AddInt32ValueToByteArray(const uint32 num, bytes& str)
-{
-    const size_t size = str.size();
-    str.resize(size + 4);
-    std::tie(str[size],
-        str[size + 1],
-        str[size + 2],
-        str[size + 3]) = helper::GetBytesFromInt32(num);
 }
 
 image::DecodedImageInfo helper::CreateFullImageInfo(
@@ -242,21 +258,6 @@ void chunks::Data::Read(const bytes& data,
         chunk.decodedScanlines = GetScanlines(uncompressed, header);
 }
 
-bytes ConvertScanlineToByteArray(const std::vector<std::vector<uint16> >& scanlines, const bool is16Bit)
-{
-    const size_t lineLen =  scanlines[0].size() + 1;
-    bytes res(scanlines.size() * lineLen);
-    for (size_t i = 0, idx = 0; i < scanlines.size(); ++i)
-    {
-        res[idx++] = 0;
-        for(size_t j = 0; j < scanlines[i].size(); ++j)
-        {
-            res[idx++] = static_cast<byte>(
-                is16Bit ? 255 * (1. * scanlines[i][j] / 0xffffu) : scanlines[i][j]);
-        }
-    }
-    return res;
-}
 void chunks::Data::Write(const chunks::Data& chunk,
     Decompressor& decoder, bytes& data, const bool is16Bit)
 {
